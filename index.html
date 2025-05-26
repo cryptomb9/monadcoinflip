@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Monad Flip Game</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+</head>
+<body>
+  <header>
+    <button id="hamburger">☰</button>
+    <div id="menu" class="hidden">
+      <button id="connectWalletBtn">Connect Wallet</button>
+      <button id="claimFaucetBtn">Claim 10 MB Faucet</button>
+      <div id="faucetStatus"></div>
+    </div>
+  </header>
+
+  <main>
+    <h1>Monad Flip Game</h1>
+
+    <div id="walletStatus">Not connected</div>
+
+    <label for="tokenSelect">Choose token:</label>
+    <select id="tokenSelect">
+      <option value="MON">Monad (Native)</option>
+      <option value="MB">MB Token</option>
+    </select>
+
+    <label for="wagerInput">Wager Amount:</label>
+    <input id="wagerInput" type="number" step="0.01" min="0.2" placeholder="Enter wager amount" />
+
+    <button id="flipButton" title="Flip the coin">
+      <div class="coin">
+        <div class="coin-heads">
+          <img src="monad_logo.png" alt="Monad Logo" />
+        </div>
+        <div class="coin-tails">Tails</div>
+      </div>
+    </button>
+
+    <div id="result"></div>
+    <div id="balance"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
