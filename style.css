@@ -61,8 +61,8 @@ main {
 }
 
 .coin {
-  width: 60px;
-  height: 60px;
+  width: 150px;
+  height: 150px;
   position: relative;
   border-radius: 50%;
   transform-style: preserve-3d;
