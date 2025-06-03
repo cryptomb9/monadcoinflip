@@ -319,7 +319,7 @@ window.addEventListener("load", async () => {
     }
     updateWalletStatus();
     updateBalance();
-    updateLeaderboard();
+    updateLeaderboard(); // Load leaderboard on start
     if (localStorage.getItem("theme") === "light") {
       document.body.classList.add("light-theme");
       themeToggleBtn.textContent = "🌙 Dark Mode";
@@ -329,7 +329,7 @@ window.addEventListener("load", async () => {
   }
 });
 
-// DOM elements
+// DOM elements (unchanged)
 const walletStatus = document.getElementById("walletStatus");
 const tokenSelect = document.getElementById("tokenSelect");
 const wagerInput = document.getElementById("wagerInput");
@@ -351,9 +351,7 @@ const startGameBtn = document.getElementById("startGameBtn");
 const startOverlay = document.getElementById("startOverlay");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 
-hamburgerBtn.onclick = () => {
-  menu.classList.toggle("hidden");
-};
+hamburgerBtn.onclick = () => menu.classList.toggle("hidden");
 
 connectWalletBtn.onclick = async () => {
   if (window.ethereum) {
@@ -372,26 +370,20 @@ connectWalletBtn.onclick = async () => {
 
 tokenSelect.onchange = () => {
   selectedToken = tokenSelect.value;
-  if (selectedToken === "MON") {
-    wagerInput.min = 0.2;
-  } else {
-    wagerInput.min = 1;
-  }
+  wagerInput.min = selectedToken === "MON" ? 0.2 : 1;
   updateBalance();
 };
 
 async function updateWalletStatus() {
-  if (accounts.length > 0) {
-    walletStatus.textContent = `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
-  } else {
-    walletStatus.textContent = "Not connected";
-  }
+  walletStatus.textContent = accounts.length
+    ? `Connected: ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`
+    : "Not connected";
 }
 
 async function updateBalance() {
   if (!accounts.length) return;
-  let balance;
   try {
+    let balance;
     if (selectedToken === "MON") {
       balance = await web3.eth.getBalance(accounts[0]);
       balance = web3.utils.fromWei(balance, "ether");
@@ -428,7 +420,6 @@ flipButton.onclick = async () => {
     return;
   }
 
-  // Add coin flip animation
   const coin = document.querySelector(".coin");
   coin.classList.add("flip");
   setTimeout(() => coin.classList.remove("flip"), 1000);
@@ -458,24 +449,27 @@ flipButton.onclick = async () => {
         .playWithMB(wagerInWei)
         .send({ from: accounts[0], gas: 200000 });
     }
-    // Get win/loss from GamePlayed event
     const gameEvent = tx.events.GamePlayed;
     const win = gameEvent.returnValues.win;
     resultDiv.textContent = win
       ? `Win! ${wager * 2} ${selectedToken} sent to your wallet.`
       : `Lose. ${wager} ${selectedToken} kept by contract.`;
-    
-    // Streak Tracker
-    let streak = JSON.parse(localStorage.getItem(`streak_${accounts[0]}`)) || { wins: 0, losses: 0, current: 0, isWin: false };
+
+    let streak = JSON.parse(localStorage.getItem(`streak_${accounts[0]}`)) || {
+      wins: 0,
+      losses: 0,
+      current: 0,
+      isWin: false
+    };
     if (win) {
       streak.current = streak.isWin ? streak.current + 1 : 1;
       streak.wins++;
       streak.isWin = true;
-      // Cache win for leaderboard
       const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
       const player = accounts[0].slice(0, 6) + "...";
       cachedWins[player] = (cachedWins[player] || 0) + 1;
       localStorage.setItem("leaderboard_wins", JSON.stringify(cachedWins));
+      console.log("Saved win to localStorage:", cachedWins);
     } else {
       streak.current = streak.isWin ? 1 : streak.current + 1;
       streak.losses++;
@@ -484,7 +478,6 @@ flipButton.onclick = async () => {
     localStorage.setItem(`streak_${accounts[0]}`, JSON.stringify(streak));
     streakDiv.textContent = `Streak: ${streak.current} ${streak.isWin ? "Wins" : "Losses"} | Total W: ${streak.wins}, L: ${streak.losses}`;
 
-    // Animations
     if (win) {
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       shareWinDiv.classList.remove("hidden");
@@ -493,7 +486,6 @@ flipButton.onclick = async () => {
       setTimeout(() => resultDiv.classList.remove("lose-shake"), 500);
     }
 
-    // Update leaderboard
     updateLeaderboard();
     updateBalance();
   } catch (err) {
@@ -518,7 +510,6 @@ claimFaucetBtn.onclick = async () => {
   }
 };
 
-// Music toggle
 toggleMusicBtn.onclick = () => {
   if (music.paused) {
     music.play().then(() => {
@@ -533,7 +524,6 @@ toggleMusicBtn.onclick = () => {
   }
 };
 
-// Start game overlay
 startGameBtn.onclick = () => {
   music.play().then(() => {
     startOverlay.style.display = "none";
@@ -545,54 +535,44 @@ startGameBtn.onclick = () => {
   });
 };
 
-// Theme toggle
 themeToggleBtn.onclick = () => {
   document.body.classList.toggle("light-theme");
   localStorage.setItem("theme", document.body.classList.contains("light-theme") ? "light" : "dark");
   themeToggleBtn.textContent = document.body.classList.contains("light-theme") ? "🌙 Dark Mode" : "☀️ Light Mode";
 };
 
-// Leaderboard
 async function updateLeaderboard() {
+  let wins = {};
   try {
     const latestBlock = await web3.eth.getBlockNumber();
     console.log("Latest block:", latestBlock);
-    const fromBlock = Math.max(0, latestBlock - 10000); // Last 10,000 blocks
+    const fromBlock = Math.max(0, latestBlock - 10000);
     const events = await flipGameContract.getPastEvents("GamePlayed", {
       fromBlock,
       toBlock: "latest"
     });
     console.log("Fetched events:", events.length);
-    const wins = {};
     events.forEach(e => {
       const player = e.returnValues.player.slice(0, 6) + "...";
       if (e.returnValues.win) {
         wins[player] = (wins[player] || 0) + 1;
       }
     });
-    // Merge with localStorage
-    const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
-    Object.assign(wins, cachedWins);
-    const leaderboard = Object.entries(wins)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([player, count], i) => `${i + 1}. ${player}: ${count} Wins`)
-      .join("<br>");
-    leaderboardDiv.innerHTML = `<h3>Top Players</h3>${leaderboard || "No wins yet."}`;
   } catch (error) {
-    console.error("Leaderboard update failed:", error);
-    // Fallback to localStorage
-    const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
-    const leaderboard = Object.entries(cachedWins)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([player, count], i) => `${i + 1}. ${player}: ${count} Wins`)
-      .join("<br>");
-    leaderboardDiv.innerHTML = `<h3>Top Players</h3>${leaderboard || "No wins yet. Play to get on the board!"}`;
+    console.error("Leaderboard fetch failed:", error);
   }
+  // Always load cached wins
+  const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
+  console.log("Cached wins:", cachedWins);
+  Object.assign(wins, cachedWins);
+  const leaderboard = Object.entries(wins)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([player, count], i) => `${i + 1}. ${player}: ${count} Wins`)
+    .join("<br>");
+  leaderboardDiv.innerHTML = `<h3>Top Players</h3>${leaderboard || "No wins yet. Flip to win!"}`;
 }
 
-// Social share
 shareBtn.onclick = () => {
   const text = `I just won ${parseFloat(wagerInput.value) * 2} ${selectedToken} on Monad Flip Game! 🎉 Try your luck: ${window.location.href}`;
   const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
