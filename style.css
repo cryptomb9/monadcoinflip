@@ -6,6 +6,12 @@ body {
   color: #ffffff;
   min-height: 100vh;
   text-align: center;
+  transition: background 0.3s, color 0.3s;
+}
+
+.light-theme {
+  background: linear-gradient(135deg, #f0e6ff, #d8b4fe);
+  color: #000000;
 }
 
 header {
@@ -21,6 +27,10 @@ header {
   cursor: pointer;
 }
 
+.light-theme #hamburger {
+  color: #000000;
+}
+
 #menu {
   position: absolute;
   top: 30px;
@@ -30,6 +40,10 @@ header {
   border-radius: 5px;
   width: 180px;
   z-index: 10;
+}
+
+.light-theme #menu {
+  background: #d8b4fe;
 }
 
 #menu button {
@@ -42,6 +56,10 @@ header {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+}
+
+.light-theme #menu button {
+  background: #4b0082;
 }
 
 .hidden {
@@ -82,6 +100,11 @@ main {
   overflow: hidden;
 }
 
+.light-theme .coin-heads, .light-theme .coin-tails {
+  background: #e0e0e0;
+  border-color: #4b0082;
+}
+
 .coin-heads img {
   width: 100%;
   height: 100%;
@@ -94,6 +117,10 @@ main {
   font-size: 18px;
   font-weight: bold;
   color: #6a0dad;
+}
+
+.light-theme .coin-tails {
+  color: #4b0082;
 }
 
 .flip {
@@ -119,6 +146,97 @@ main {
   font-weight: bold;
 }
 
+#streak {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #00ff88;
+}
+
+.light-theme #streak {
+  color: #008000;
+}
+
+#shareWin {
+  margin-top: 10px;
+}
+
+#shareBtn {
+  padding: 8px 12px;
+  background: #1da1f2;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#leaderboard {
+  margin-top: 20px;
+  font-size: 14px;
+  text-align: left;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#leaderboard h3 {
+  margin-bottom: 5px;
+}
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.overlay-content {
+  background: #2a1a5e;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.light-theme .overlay-content {
+  background: #d8b4fe;
+}
+
+#startGameBtn {
+  padding: 10px 20px;
+  background: #6a0dad;
+  color: #ffffff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.light-theme #startGameBtn {
+  background: #4b0082;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-5px); }
+  100% { transform: translateX(0); }
+}
+
+.lose-shake {
+  animation: shake 0.5s;
+  color: #ff4444;
+}
+
+.light-theme .lose-shake {
+  color: #b22222;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 600px) {
   body {
@@ -133,5 +251,9 @@ main {
   #menu {
     width: 90%;
     left: 5%;
+  }
+  .overlay-content {
+    width: 80%;
+    padding: 15px;
   }
 }

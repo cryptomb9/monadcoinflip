@@ -308,9 +308,22 @@ let selectedToken = "MON";
 window.addEventListener("load", async () => {
   if (window.ethereum) {
     web3 = new Web3(window.ethereum);
+    console.log("Web3 initialized:", web3.version);
     flipGameContract = new web3.eth.Contract(FLIP_GAME_ABI, FLIP_GAME_CONTRACT_ADDRESS);
+    console.log("Contract initialized at:", FLIP_GAME_CONTRACT_ADDRESS);
+    try {
+      const networkId = await web3.eth.net.getId();
+      console.log("Connected to network ID:", networkId);
+    } catch (err) {
+      console.error("Network check failed:", err);
+    }
     updateWalletStatus();
     updateBalance();
+    updateLeaderboard();
+    if (localStorage.getItem("theme") === "light") {
+      document.body.classList.add("light-theme");
+      themeToggleBtn.textContent = "🌙 Dark Mode";
+    }
   } else {
     alert("Please install MetaMask or another EVM wallet.");
   }
@@ -322,12 +335,21 @@ const tokenSelect = document.getElementById("tokenSelect");
 const wagerInput = document.getElementById("wagerInput");
 const flipButton = document.getElementById("flipButton");
 const resultDiv = document.getElementById("result");
+const streakDiv = document.getElementById("streak");
+const shareWinDiv = document.getElementById("shareWin");
+const shareBtn = document.getElementById("shareBtn");
 const balanceDiv = document.getElementById("balance");
+const leaderboardDiv = document.getElementById("leaderboard");
 const hamburgerBtn = document.getElementById("hamburger");
 const menu = document.getElementById("menu");
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 const claimFaucetBtn = document.getElementById("claimFaucetBtn");
 const faucetStatus = document.getElementById("faucetStatus");
+const music = document.getElementById("bgMusic");
+const toggleMusicBtn = document.getElementById("toggleMusicBtn");
+const startGameBtn = document.getElementById("startGameBtn");
+const startOverlay = document.getElementById("startOverlay");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 
 hamburgerBtn.onclick = () => {
   menu.classList.toggle("hidden");
@@ -339,6 +361,7 @@ connectWalletBtn.onclick = async () => {
       accounts = await ethereum.request({ method: "eth_requestAccounts" });
       updateWalletStatus();
       updateBalance();
+      updateLeaderboard();
     } catch (error) {
       alert("Wallet connection failed: " + error.message);
     }
@@ -377,7 +400,7 @@ async function updateBalance() {
       balance = await mbToken.methods.balanceOf(accounts[0]).call();
       balance = web3.utils.fromWei(balance, "ether");
     }
-    balanceDiv.textContent = `${selectedToken} Balance: ${balance}`;
+    balanceDiv.textContent = `${selectedToken} Balance: ${parseFloat(balance).toFixed(4)}`;
   } catch (error) {
     console.error("Balance update failed:", error);
     balanceDiv.textContent = `${selectedToken} Balance: Error`;
@@ -411,11 +434,11 @@ flipButton.onclick = async () => {
   setTimeout(() => coin.classList.remove("flip"), 1000);
 
   resultDiv.textContent = "Waiting for transaction confirmation...";
+  shareWinDiv.classList.add("hidden");
   try {
     const wagerInWei = web3.utils.toWei(wager.toString(), "ether");
     let tx;
     if (selectedToken === "MON") {
-      // Check contract MON balance
       const contractBalance = await web3.eth.getBalance(FLIP_GAME_CONTRACT_ADDRESS);
       if (web3.utils.fromWei(contractBalance, "ether") < wager * 2) {
         resultDiv.textContent = "Contract has insufficient MON for payout.";
@@ -441,6 +464,37 @@ flipButton.onclick = async () => {
     resultDiv.textContent = win
       ? `Win! ${wager * 2} ${selectedToken} sent to your wallet.`
       : `Lose. ${wager} ${selectedToken} kept by contract.`;
+    
+    // Streak Tracker
+    let streak = JSON.parse(localStorage.getItem(`streak_${accounts[0]}`)) || { wins: 0, losses: 0, current: 0, isWin: false };
+    if (win) {
+      streak.current = streak.isWin ? streak.current + 1 : 1;
+      streak.wins++;
+      streak.isWin = true;
+      // Cache win for leaderboard
+      const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
+      const player = accounts[0].slice(0, 6) + "...";
+      cachedWins[player] = (cachedWins[player] || 0) + 1;
+      localStorage.setItem("leaderboard_wins", JSON.stringify(cachedWins));
+    } else {
+      streak.current = streak.isWin ? 1 : streak.current + 1;
+      streak.losses++;
+      streak.isWin = false;
+    }
+    localStorage.setItem(`streak_${accounts[0]}`, JSON.stringify(streak));
+    streakDiv.textContent = `Streak: ${streak.current} ${streak.isWin ? "Wins" : "Losses"} | Total W: ${streak.wins}, L: ${streak.losses}`;
+
+    // Animations
+    if (win) {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      shareWinDiv.classList.remove("hidden");
+    } else {
+      resultDiv.classList.add("lose-shake");
+      setTimeout(() => resultDiv.classList.remove("lose-shake"), 500);
+    }
+
+    // Update leaderboard
+    updateLeaderboard();
     updateBalance();
   } catch (err) {
     console.error("Transaction failed:", err);
@@ -462,4 +516,85 @@ claimFaucetBtn.onclick = async () => {
     console.error("Faucet claim failed:", err);
     faucetStatus.textContent = "Faucet claim failed or cooldown not over.";
   }
+};
+
+// Music toggle
+toggleMusicBtn.onclick = () => {
+  if (music.paused) {
+    music.play().then(() => {
+      toggleMusicBtn.textContent = "🔇 Mute Music";
+    }).catch(error => {
+      console.error("Audio playback failed:", error);
+      resultDiv.textContent = "Failed to play audio. Check console.";
+    });
+  } else {
+    music.pause();
+    toggleMusicBtn.textContent = "🎶 Play Music";
+  }
+};
+
+// Start game overlay
+startGameBtn.onclick = () => {
+  music.play().then(() => {
+    startOverlay.style.display = "none";
+    toggleMusicBtn.textContent = "🔇 Mute Music";
+  }).catch(error => {
+    console.error("Audio playback failed:", error);
+    resultDiv.textContent = "Failed to play audio, but game started.";
+    startOverlay.style.display = "none";
+  });
+};
+
+// Theme toggle
+themeToggleBtn.onclick = () => {
+  document.body.classList.toggle("light-theme");
+  localStorage.setItem("theme", document.body.classList.contains("light-theme") ? "light" : "dark");
+  themeToggleBtn.textContent = document.body.classList.contains("light-theme") ? "🌙 Dark Mode" : "☀️ Light Mode";
+};
+
+// Leaderboard
+async function updateLeaderboard() {
+  try {
+    const latestBlock = await web3.eth.getBlockNumber();
+    console.log("Latest block:", latestBlock);
+    const fromBlock = Math.max(0, latestBlock - 10000); // Last 10,000 blocks
+    const events = await flipGameContract.getPastEvents("GamePlayed", {
+      fromBlock,
+      toBlock: "latest"
+    });
+    console.log("Fetched events:", events.length);
+    const wins = {};
+    events.forEach(e => {
+      const player = e.returnValues.player.slice(0, 6) + "...";
+      if (e.returnValues.win) {
+        wins[player] = (wins[player] || 0) + 1;
+      }
+    });
+    // Merge with localStorage
+    const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
+    Object.assign(wins, cachedWins);
+    const leaderboard = Object.entries(wins)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([player, count], i) => `${i + 1}. ${player}: ${count} Wins`)
+      .join("<br>");
+    leaderboardDiv.innerHTML = `<h3>Top Players</h3>${leaderboard || "No wins yet."}`;
+  } catch (error) {
+    console.error("Leaderboard update failed:", error);
+    // Fallback to localStorage
+    const cachedWins = JSON.parse(localStorage.getItem("leaderboard_wins")) || {};
+    const leaderboard = Object.entries(cachedWins)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([player, count], i) => `${i + 1}. ${player}: ${count} Wins`)
+      .join("<br>");
+    leaderboardDiv.innerHTML = `<h3>Top Players</h3>${leaderboard || "No wins yet. Play to get on the board!"}`;
+  }
+}
+
+// Social share
+shareBtn.onclick = () => {
+  const text = `I just won ${parseFloat(wagerInput.value) * 2} ${selectedToken} on Monad Flip Game! 🎉 Try your luck: ${window.location.href}`;
+  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
 };
